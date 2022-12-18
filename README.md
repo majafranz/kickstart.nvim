@@ -2,12 +2,14 @@
 
 A starting point for Neovim that is:
 
-* Small (~370 lines)
+* Small (~500 lines)
 * Single-file
 * Documented
 * Modular
 
 Kickstart.nvim targets *only* the latest ['stable'](https://github.com/neovim/neovim/releases/tag/stable) and latest ['nightly'](https://github.com/neovim/neovim/releases/tag/nightly) of Neovim. If you are experiencing issues, please make sure you have the latest versions.
+
+This version of kickstart.nvim is used for demonstration in the "vi-nachten" talk at the OTH Regensburg.
 
 This repo is meant to be used as a starting point for a user's own configuration; remove the things you don't use and add what you miss. This configuration serves as the reference configuration for the [lspconfig wiki](https://github.com/neovim/nvim-lspconfig/wiki).
 

@@ -40,22 +40,19 @@ require('packer').startup(function(use)
     after = 'nvim-treesitter',
   }
 
-  -- Git related plugins
-  use 'tpope/vim-fugitive'
-  use 'tpope/vim-rhubarb'
+  -- Git related plugin
   use 'lewis6991/gitsigns.nvim'
 
   use 'navarasu/onedark.nvim' -- Theme inspired by Atom
   use 'nvim-lualine/lualine.nvim' -- Fancier statusline
   use 'lukas-reineke/indent-blankline.nvim' -- Add indentation guides even on blank lines
-  use 'numToStr/Comment.nvim' -- "gc" to comment visual regions/lines
   use 'tpope/vim-sleuth' -- Detect tabstop and shiftwidth automatically
 
   -- Fuzzy Finder (files, lsp, etc)
   use { 'nvim-telescope/telescope.nvim', branch = '0.1.x', requires = { 'nvim-lua/plenary.nvim' } }
 
-  -- Fuzzy Finder Algorithm which requires local dependencies to be built. Only load if `make` is available
-  use { 'nvim-telescope/telescope-fzf-native.nvim', run = 'make', cond = vim.fn.executable 'make' == 1 }
+  -- file tree
+  use { 'scrooloose/nerdtree' }
 
   -- Add custom plugins to packer from /nvim/lua/custom/plugins.lua
   local has_plugins, plugins = pcall(require, 'custom.plugins')
@@ -122,6 +119,12 @@ vim.cmd [[colorscheme onedark]]
 -- Set completeopt to have a better completion experience
 vim.o.completeopt = 'menuone,noselect'
 
+-- enable systemwide clipboard
+vim.o.clipboard = 'unnamed,unnamedplus'
+
+-- show whitespaces
+vim.o.listchars = 'tab:→ ,trail:•'
+
 -- [[ Basic Keymaps ]]
 -- Set <space> as the leader key
 -- See `:help mapleader`
@@ -129,13 +132,67 @@ vim.o.completeopt = 'menuone,noselect'
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
+
+---Set global vim keymap
+---@param mode string
+---@param lhs string
+---@param rhs string
+---@param opts table
+local function map(mode, lhs, rhs, opts)
+    local options = { noremap = true }
+
+    if opts then
+        options = vim.tbl_extend('force', options, opts)
+    end
+
+    -- See `:help vim.keymap.set()`
+    vim.keymap.set(mode, lhs, rhs, options)
+end
+
+silenced = { silent = true }
+
 -- Keymaps for better default experience
--- See `:help vim.keymap.set()`
-vim.keymap.set({ 'n', 'v' }, '<Space>', '<Nop>', { silent = true })
+map('n', '<Space>', '<Nop>', silenced)
 
 -- Remap for dealing with word wrap
-vim.keymap.set('n', 'k', "v:count == 0 ? 'gk' : 'k'", { expr = true, silent = true })
-vim.keymap.set('n', 'j', "v:count == 0 ? 'gj' : 'j'", { expr = true, silent = true })
+map('n', 'k', "v:count == 0 ? 'gk' : 'k'", { expr = true, silent = true })
+map('n', 'j', "v:count == 0 ? 'gj' : 'j'", { expr = true, silent = true })
+
+-- nerdtree
+map('n', '<C-t>', ':NERDTreeToggle<CR>', silenced)
+
+-- line navigation
+map('n', 'ö', '^', silenced)
+map('n', 'ä', '$', silenced)
+map('n', 'dä', 'd$', silenced)
+map('n', 'dö', 'd^', silenced)
+map('n', 'yä', 'y$', silenced)
+map('n', 'yö', 'y^', silenced)
+map('v', 'ö', '^', silenced)
+map('v', 'ä', '$', silenced)
+
+-- file navigation
+map('n', '<C-p>', '<C-i>', silenced)
+
+-- pane navigation
+map('n', '<Right>', '<C-w>l', silenced)
+map('n', '<Left>', '<C-w>h', silenced)
+map('n', '<Up>', '<C-w>k', silenced)
+map('n', '<Down>', '<C-w>j', silenced)
+
+-- tab navigation
+map('n', '<Tab>', 'gt', silenced)
+map('n', '<S-Tab>', 'gT', silenced)
+
+-- terminal
+map('n', '<F1>','<C-w>s<C-w>j:terminal<CR><C-w>9-i', silenced)
+map('t', '<F1>','<C-\\><C-n>:q!<CR>', silenced)
+map('n', '<F2>','<C-w>ji', silenced)
+map('t', '<F2>','<C-\\><C-n><C-w>k', silenced)
+map('n', '<F3>','<C-w>v<C-w>l:terminal<CR>i', silenced)
+map('t', '<F3>','<C-\\><C-n><C-w>v<C-w>l:terminal<CR>i', silenced)
+map('t', '<C-o>','<C-\\><C-n>', silenced) -- get out of terminal wo closing
+
 
 -- [[ Highlight on yank ]]
 -- See `:help vim.highlight.on_yank()`
@@ -148,6 +205,25 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   pattern = '*',
 })
 
+-- toggle hiding invisible chars on insert
+vim.api.nvim_create_autocmd('InsertEnter', {
+  callback = function()
+    vim.wo.list = false
+  end,
+  group = highlight_group,
+  pattern = '*'
+
+ })
+
+vim.api.nvim_create_autocmd('InsertLeave', {
+  callback = function()
+    vim.wo.list = true
+  end,
+  group = highlight_group,
+  pattern = '*'
+
+ })
+
 -- Set lualine as statusline
 -- See `:help lualine.txt`
 require('lualine').setup {
@@ -157,16 +233,6 @@ require('lualine').setup {
     component_separators = '|',
     section_separators = '',
   },
-}
-
--- Enable Comment.nvim
-require('Comment').setup()
-
--- Enable `lukas-reineke/indent-blankline.nvim`
--- See `:help indent_blankline.txt`
-require('indent_blankline').setup {
-  char = '┊',
-  show_trailing_blankline_indent = false,
 }
 
 -- Gitsigns
@@ -194,12 +260,9 @@ require('telescope').setup {
   },
 }
 
--- Enable telescope fzf native, if installed
-pcall(require('telescope').load_extension, 'fzf')
-
 -- See `:help telescope.builtin`
-vim.keymap.set('n', '<leader>?', require('telescope.builtin').oldfiles, { desc = '[?] Find recently opened files' })
-vim.keymap.set('n', '<leader><space>', require('telescope.builtin').buffers, { desc = '[ ] Find existing buffers' })
+map('n', '<leader>?', require('telescope.builtin').oldfiles, { desc = '[?] Find recently opened files' })
+map('n', '<leader><space>', require('telescope.builtin').buffers, { desc = '[ ] Find existing buffers' })
 vim.keymap.set('n', '<leader>/', function()
   -- You can pass additional configuration to telescope to change theme, layout, etc.
   require('telescope.builtin').current_buffer_fuzzy_find(require('telescope.themes').get_dropdown {
@@ -208,17 +271,17 @@ vim.keymap.set('n', '<leader>/', function()
   })
 end, { desc = '[/] Fuzzily search in current buffer]' })
 
-vim.keymap.set('n', '<leader>sf', require('telescope.builtin').find_files, { desc = '[S]earch [F]iles' })
-vim.keymap.set('n', '<leader>sh', require('telescope.builtin').help_tags, { desc = '[S]earch [H]elp' })
-vim.keymap.set('n', '<leader>sw', require('telescope.builtin').grep_string, { desc = '[S]earch current [W]ord' })
-vim.keymap.set('n', '<leader>sg', require('telescope.builtin').live_grep, { desc = '[S]earch by [G]rep' })
-vim.keymap.set('n', '<leader>sd', require('telescope.builtin').diagnostics, { desc = '[S]earch [D]iagnostics' })
+map('n', '<leader>sf', require('telescope.builtin').find_files, { desc = '[S]earch [F]iles' })
+map('n', '<leader>sh', require('telescope.builtin').help_tags, { desc = '[S]earch [H]elp' })
+map('n', '<leader>sw', require('telescope.builtin').grep_string, { desc = '[S]earch current [W]ord' })
+map('n', '<leader>sg', require('telescope.builtin').live_grep, { desc = '[S]earch by [G]rep' })
+map('n', '<leader>sd', require('telescope.builtin').diagnostics, { desc = '[S]earch [D]iagnostics' })
 
 -- [[ Configure Treesitter ]]
 -- See `:help nvim-treesitter`
 require('nvim-treesitter.configs').setup {
   -- Add languages to be installed here that you want installed for treesitter
-  ensure_installed = { 'c', 'cpp', 'go', 'lua', 'python', 'rust', 'typescript', 'help' },
+  ensure_installed = { 'c', 'cpp', 'lua', 'python', 'help', 'vim'},
 
   highlight = { enable = true },
   indent = { enable = true },
@@ -337,7 +400,7 @@ require('mason').setup()
 
 -- Enable the following language servers
 -- Feel free to add/remove any LSPs that you want here. They will automatically be installed
-local servers = { 'clangd', 'rust_analyzer', 'pyright', 'tsserver', 'sumneko_lua', 'gopls' }
+local servers = { 'clangd', 'pyright', 'sumneko_lua'}
 
 -- Ensure the servers above are installed
 require('mason-lspconfig').setup {
@@ -399,12 +462,13 @@ cmp.setup {
   mapping = cmp.mapping.preset.insert {
     ['<C-d>'] = cmp.mapping.scroll_docs(-4),
     ['<C-f>'] = cmp.mapping.scroll_docs(4),
-    ['<C-Space>'] = cmp.mapping.complete(),
+    ['<C-Space>'] = cmp.mapping.abort(),
     ['<CR>'] = cmp.mapping.confirm {
       behavior = cmp.ConfirmBehavior.Replace,
       select = true,
     },
-    ['<Tab>'] = cmp.mapping(function(fallback)
+
+    ['<C-n>'] = cmp.mapping(function(fallback)
       if cmp.visible() then
         cmp.select_next_item()
       elseif luasnip.expand_or_jumpable() then
@@ -413,7 +477,7 @@ cmp.setup {
         fallback()
       end
     end, { 'i', 's' }),
-    ['<S-Tab>'] = cmp.mapping(function(fallback)
+    ['<C-p>'] = cmp.mapping(function(fallback)
       if cmp.visible() then
         cmp.select_prev_item()
       elseif luasnip.jumpable(-1) then
